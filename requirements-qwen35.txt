@@ -1,0 +1,3 @@
+# Qwen3.5 support currently requires the Transformers main branch.
+transformers @ git+https://github.com/huggingface/transformers.git
+huggingface-hub>=1.5.0,<2.0
