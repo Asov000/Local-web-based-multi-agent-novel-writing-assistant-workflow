@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>智能写作助手</title>
+  <style>
+    :root {
+      --ink: #17211d;
+      --muted: #68736e;
+      --line: #d8dfdb;
+      --soft: #f4f7f5;
+      --paper: #ffffff;
+      --green: #23745e;
+      --green-dark: #185746;
+      --coral: #b95d4e;
+      --amber: #9a6a16;
+      --blue: #376c89;
+      --danger: #a93e3e;
+      --shadow: 0 12px 34px rgba(20, 35, 28, .16);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body { color: var(--ink); background: var(--paper); font: 14px/1.5 "Microsoft YaHei", "PingFang SC", sans-serif; overflow: hidden; }
+    button, input, textarea, select { font: inherit; letter-spacing: 0; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .48; }
+    .hidden { display: none !important; }
+    .topbar { height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid var(--line); background: #fbfcfb; }
+    .brand { font-size: 17px; font-weight: 700; }
+    .connection { color: var(--muted); font-size: 12px; }
+    .app { height: calc(100% - 48px); min-height: 0; overflow: hidden; display: grid; grid-template-columns: 300px 340px minmax(0, 1fr); }
+    .sidebar, .control-panel { border-right: 1px solid var(--line); min-width: 0; min-height: 0; overflow: hidden; background: #fbfcfb; }
+    .sidebar { display: flex; flex-direction: column; }
+    .side-view { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+    .side-tabs { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--line); }
+    .side-tab { height: 43px; border: 0; border-right: 1px solid var(--line); background: transparent; color: var(--muted); }
+    .side-tab:last-child { border-right: 0; }
+    .side-tab.active { color: var(--green-dark); box-shadow: inset 0 -3px var(--green); font-weight: 700; background: #fff; }
+    .side-head { min-height: 48px; padding: 8px 12px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; }
+    .side-head strong { flex: 1; min-width: 0; }
+    .side-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 8px; }
+    .small-button, .icon-button { border: 1px solid var(--line); background: #fff; color: var(--ink); border-radius: 5px; min-height: 30px; padding: 4px 9px; }
+    .icon-button { width: 30px; padding: 0; font-size: 17px; }
+    .search { width: 100%; height: 34px; padding: 0 9px; border: 1px solid var(--line); border-radius: 5px; background: #fff; }
+    .tree-book { margin-bottom: 8px; }
+    .tree-book-head { display: flex; align-items: center; gap: 4px; }
+    .tree-book-title { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; min-height: 36px; border: 0; background: transparent; text-align: left; padding: 5px 7px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tree-book-title.active { color: var(--green-dark); background: #eaf3ef; }
+    .tree-add { flex: none; width: 30px; height: 30px; border: 0; border-radius: 5px; background: transparent; color: var(--muted); font-size: 18px; }
+    .tree-add:hover { background: var(--soft); color: var(--green-dark); }
+    .chapter-row, .record-row { width: 100%; border: 0; border-left: 3px solid transparent; background: transparent; text-align: left; padding: 7px 9px; color: var(--ink); }
+    .chapter-row { padding-left: 24px; }
+    .chapter-row:hover, .record-row:hover { background: var(--soft); }
+    .chapter-row.active, .record-row.active { border-left-color: var(--green); background: #eaf3ef; color: var(--green-dark); }
+    .record-row strong, .record-row span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .record-row span { color: var(--muted); font-size: 12px; }
+    .group-title { display: flex; align-items: center; justify-content: space-between; padding: 9px 7px 5px; color: var(--muted); font-size: 12px; font-weight: 700; }
+    .tree-section-title { width: calc(100% - 12px); margin-left: 12px; min-height: 31px; border: 0; background: transparent; color: #46524d; text-align: left; padding: 4px 7px; font-weight: 700; }
+    .tree-section-title:hover { background: var(--soft); }
+    .tree-memory-group { margin-left: 18px; padding: 4px 7px 2px; color: var(--muted); font-size: 11px; font-weight: 700; }
+    .tree-record { padding-left: 30px; }
+    .tree-loading { padding: 10px 24px; color: var(--muted); font-size: 12px; }
+    .category-strip { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 7px; }
+    .category-button { white-space: nowrap; border: 1px solid var(--line); background: #fff; border-radius: 5px; padding: 5px 8px; color: var(--muted); }
+    .category-button.active { color: #fff; border-color: var(--green); background: var(--green); }
+    .review-row { border-left-color: var(--amber); background: #fff9e8; }
+    .empty { padding: 30px 12px; color: var(--muted); text-align: center; }
+    .control-panel { display: flex; flex-direction: column; }
+    .control-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 14px; }
+    .field { margin-bottom: 12px; }
+    .field label { display: block; margin-bottom: 5px; color: #4f5a55; font-size: 12px; }
+    .field input, .field textarea, .field select { width: 100%; border: 1px solid var(--line); border-radius: 5px; background: #fff; color: var(--ink); padding: 8px 9px; }
+    .field input, .field select { height: 38px; }
+    .field textarea { min-height: 132px; resize: vertical; }
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .target { border-left: 3px solid var(--blue); background: #edf5f8; color: #31586b; padding: 8px 9px; margin-bottom: 12px; }
+    .checkline { display: flex; gap: 7px; align-items: center; color: var(--muted); margin: 8px 0 12px; }
+    .command { width: 100%; min-height: 39px; border: 1px solid var(--line); border-radius: 5px; background: #fff; color: var(--ink); }
+    .command.primary { background: var(--coral); border-color: var(--coral); color: #fff; font-weight: 700; }
+    .status-dock { border-top: 1px solid var(--line); background: #fff; }
+    .status-dock summary { list-style: none; cursor: pointer; padding: 9px 12px; display: flex; align-items: center; gap: 8px; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex: none; }
+    .status-current { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .status-log { max-height: 135px; overflow: auto; margin: 0; padding: 0 12px 10px; white-space: pre-wrap; color: var(--muted); font: 12px/1.65 Consolas, monospace; }
+    .workspace { min-width: 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; background: #fff; }
+    .workspace-bar { min-height: 50px; padding: 8px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+    .workspace-title { flex: 1; min-width: 150px; }
+    .workspace-title strong, .workspace-title span { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .workspace-title span { color: var(--muted); font-size: 12px; }
+    .toolbar-button { min-height: 34px; border: 1px solid var(--line); border-radius: 5px; background: #fff; color: var(--ink); padding: 5px 11px; }
+    .toolbar-button.primary { background: var(--green); border-color: var(--green); color: #fff; }
+    .toolbar-button.danger { color: var(--danger); }
+    .workspace-body { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-gutter: stable; }
+    .editor-empty { height: 100%; display: grid; place-items: center; color: var(--muted); }
+    .editor-sheet { max-width: 920px; min-height: 100%; margin: 0 auto; padding: 30px 42px 80px; }
+    #chapterTitle { width: 100%; border: 0; border-bottom: 1px solid var(--line); outline: 0; padding: 5px 0 12px; font-size: 25px; font-weight: 700; }
+    #chapterText { width: 100%; min-height: calc(100vh - 190px); border: 0; outline: 0; resize: none; padding: 20px 0; font-size: 16px; line-height: 1.95; }
+    .manager-form { width: 100%; max-width: 860px; margin: 0 auto; padding: 24px 30px 80px; }
+    .manager-form h2 { margin: 0 0 18px; font-size: 20px; }
+    .manager-form textarea { min-height: 90px; }
+    .manager-actions { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+    .manager-actions .toolbar-button { min-width: 94px; }
+    .preview-list { border-top: 1px solid var(--line); }
+    .preview-workspace { overflow: hidden; display: flex; flex-direction: column; }
+    .preview-manager { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-gutter: stable; padding-bottom: 28px; }
+    .preview-actions { flex: none; display: flex; gap: 8px; flex-wrap: wrap; padding: 10px max(30px, calc((100% - 860px) / 2 + 30px)); border-top: 1px solid var(--line); background: #fff; box-shadow: 0 -5px 15px rgba(20, 35, 28, .06); }
+    .preview-actions .toolbar-button { min-width: 94px; }
+    .preview-item { padding: 14px 0; border-bottom: 1px solid var(--line); }
+    .preview-item strong { display: block; margin-bottom: 5px; }
+    .preview-item dl { display: grid; grid-template-columns: 100px 1fr; margin: 0; gap: 4px 10px; }
+    .preview-item dt { color: var(--muted); }
+    .preview-item dd { margin: 0; white-space: pre-wrap; }
+    .preview-choice { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .preview-choice label { display: flex; align-items: center; gap: 5px; color: var(--muted); }
+    .preview-choice strong { flex: 1; margin: 0; }
+    .preview-choice select { height: 32px; border: 1px solid var(--line); border-radius: 5px; background: #fff; }
+    .preview-item.skipped .preview-edit-grid { opacity: .45; }
+    .preview-duplicate { margin: 8px 0 0 130px; color: #8a5b1d; font-size: 12px; }
+    .preview-edit-grid { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 8px 10px; align-items: start; }
+    .preview-edit-grid label { color: var(--muted); font-size: 12px; padding-top: 7px; }
+    .preview-edit-grid input, .preview-edit-grid textarea { width: 100%; border: 1px solid var(--line); border-radius: 5px; padding: 7px 8px; }
+    .preview-edit-grid textarea { min-height: 62px; resize: vertical; }
+    .audit-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 14px 0; }
+    .audit-summary div { border: 1px solid var(--line); border-radius: 5px; padding: 10px; background: var(--soft); }
+    .audit-summary strong, .audit-summary span { display: block; }
+    .audit-summary strong { font-size: 20px; }
+    .audit-summary span { color: var(--muted); font-size: 12px; }
+    .audit-notice { margin: 0 0 12px; padding: 9px 10px; border-left: 3px solid var(--amber); background: #fff9e8; color: #6f511e; }
+    .audit-operation { padding: 12px 0; border-bottom: 1px solid var(--line); }
+    .audit-operation strong { display: block; margin-bottom: 4px; }
+    .audit-operation p { margin: 3px 0; white-space: pre-wrap; }
+    .audit-operation span { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+    .audit-finding { padding: 10px 0; border-bottom: 1px solid var(--line); }
+    .audit-finding strong, .audit-finding span { display: block; }
+    .audit-finding span { margin-top: 3px; color: var(--muted); font-size: 12px; white-space: pre-wrap; }
+    .dialog-backdrop { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 16px; background: rgba(19, 31, 26, .38); }
+    .dialog-panel { width: min(420px, 100%); border: 1px solid #b8c4be; border-radius: 7px; background: #fff; box-shadow: var(--shadow); padding: 20px; }
+    .dialog-backdrop.audit-mode .dialog-panel { width: min(520px, 100%); }
+    .dialog-panel h2 { margin: 0 0 16px; font-size: 18px; }
+    .dialog-warning { margin: 0 0 14px; padding: 10px 11px; border-left: 3px solid var(--amber); background: #fff9e8; color: #6f511e; line-height: 1.65; }
+    .audit-scope-fields { margin-bottom: 14px; }
+    .audit-chapter-picker { max-height: 170px; overflow-y: auto; margin-top: 8px; padding: 8px; border: 1px solid var(--line); background: var(--soft); }
+    .audit-chapter-picker label { display: flex; align-items: center; gap: 7px; min-height: 30px; cursor: pointer; }
+    .audit-scope-hint { margin-top: 7px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+    .assistant-launcher { position: fixed; right: 22px; bottom: 20px; z-index: 30; width: 48px; height: 48px; border: 0; border-radius: 50%; background: var(--green); color: #fff; box-shadow: var(--shadow); font-size: 19px; font-weight: 700; }
+    .assistant { position: fixed; z-index: 40; width: 430px; height: 520px; min-width: 330px; min-height: 340px; max-width: calc(100vw - 20px); max-height: calc(100vh - 20px); right: 20px; bottom: 20px; background: #fff; border: 1px solid #b8c4be; box-shadow: var(--shadow); resize: none; overflow: hidden; display: flex; flex-direction: column; }
+    .assistant-head { height: 46px; flex: none; padding: 0 8px 0 13px; display: flex; align-items: center; gap: 8px; background: #1f3f35; color: #fff; cursor: move; user-select: none; }
+    .assistant-head strong { flex: 1; }
+    .assistant-head button { width: 30px; height: 30px; border: 0; color: #fff; background: transparent; font-size: 18px; }
+    .assistant-quick { display: flex; gap: 6px; overflow-x: auto; padding: 8px; border-bottom: 1px solid var(--line); }
+    .assistant-quick button { white-space: nowrap; border: 1px solid var(--line); border-radius: 5px; background: #fff; color: var(--green-dark); padding: 4px 7px; font-size: 12px; }
+    .assistant-chat { flex: 1; min-height: 0; overflow-y: scroll; overflow-x: hidden; padding: 12px 14px 12px 12px; background: var(--soft); scrollbar-color: #849a91 #e4ebe7; scrollbar-width: auto; }
+    .assistant-chat::-webkit-scrollbar { width: 12px; }
+    .assistant-chat::-webkit-scrollbar-track { background: #e4ebe7; }
+    .assistant-chat::-webkit-scrollbar-thumb { background: #849a91; border: 3px solid #e4ebe7; border-radius: 6px; }
+    .bubble { max-width: 88%; padding: 8px 10px; margin-bottom: 10px; border-radius: 6px; overflow-wrap: anywhere; }
+    .bubble.user { margin-left: auto; background: #dfeee8; }
+    .bubble.assistant { background: #fff; border: 1px solid var(--line); }
+    .assistant-text p { margin: 0 0 8px; }
+    .assistant-text p:last-child { margin-bottom: 0; }
+    .assistant-text .answer-heading { margin: 10px 0 5px; font-weight: 700; }
+    .assistant-text .answer-list { display: grid; grid-template-columns: auto 1fr; gap: 6px; margin: 3px 0; }
+    .assistant-text code { padding: 1px 4px; border-radius: 3px; background: #edf1ef; font-family: Consolas, monospace; }
+    .bubble .refs { margin-top: 7px; color: var(--muted); font-size: 11px; border-top: 1px solid var(--line); padding-top: 5px; white-space: pre-wrap; }
+    .bubble .refs summary { cursor: pointer; }
+    .assistant-compose { flex: none; padding: 8px; border-top: 1px solid var(--line); background: #fff; }
+    .assistant-compose textarea { width: 100%; min-height: 58px; max-height: 130px; resize: vertical; border: 1px solid var(--line); border-radius: 5px; padding: 7px; }
+    .assistant-compose-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+    .assistant-compose-row span { flex: 1; color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .assistant-compose-row button { border: 0; border-radius: 5px; background: var(--green); color: #fff; padding: 6px 13px; }
+    .assistant-resize { position: absolute; z-index: 3; right: 0; bottom: 0; width: 20px; height: 20px; cursor: nwse-resize; touch-action: none; }
+    .assistant-resize::after { content: ""; position: absolute; right: 4px; bottom: 4px; width: 9px; height: 9px; border-right: 2px solid #779086; border-bottom: 2px solid #779086; }
+    .assistant.maximized { left: 12px !important; top: 58px !important; right: 12px !important; bottom: 12px !important; width: auto !important; height: auto !important; max-width: none; max-height: none; }
+    .assistant.maximized .assistant-resize { display: none; }
+    .side-scroll, .control-scroll, .workspace-body, .preview-manager, .status-log { scrollbar-color: #93a49d #edf1ef; scrollbar-width: auto; }
+    .side-scroll::-webkit-scrollbar, .control-scroll::-webkit-scrollbar, .workspace-body::-webkit-scrollbar, .preview-manager::-webkit-scrollbar, .status-log::-webkit-scrollbar { width: 11px; height: 11px; }
+    .side-scroll::-webkit-scrollbar-track, .control-scroll::-webkit-scrollbar-track, .workspace-body::-webkit-scrollbar-track, .preview-manager::-webkit-scrollbar-track, .status-log::-webkit-scrollbar-track { background: #edf1ef; }
+    .side-scroll::-webkit-scrollbar-thumb, .control-scroll::-webkit-scrollbar-thumb, .workspace-body::-webkit-scrollbar-thumb, .preview-manager::-webkit-scrollbar-thumb, .status-log::-webkit-scrollbar-thumb { background: #93a49d; border: 3px solid #edf1ef; border-radius: 6px; }
+    @media (max-width: 1100px) { .app { grid-template-columns: 260px 310px minmax(0, 1fr); } }
+    @media (max-width: 820px) {
+      body { overflow: auto; }
+      .app { height: auto; min-height: calc(100vh - 48px); grid-template-columns: 1fr; }
+      .sidebar, .control-panel { border-right: 0; border-bottom: 1px solid var(--line); max-height: 52vh; }
+      .workspace { min-height: 75vh; overflow: visible; }
+      .editor-sheet, .manager-form { padding-left: 18px; padding-right: 18px; }
+      .audit-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .preview-workspace { max-height: 75vh; overflow: hidden; }
+      .preview-actions { padding-left: 18px; padding-right: 18px; }
+      .assistant { left: 10px !important; right: 10px !important; bottom: 10px !important; top: auto !important; width: calc(100vw - 20px) !important; height: min(70vh, 560px) !important; min-width: 0; }
+      .assistant-resize { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar"><div class="brand">智能写作助手</div><span id="connection" class="connection">正在连接</span></header>
+  <main class="app">
+    <aside class="sidebar">
+      <nav class="side-tabs" aria-label="资料导航">
+        <button class="side-tab active" data-side="novels" type="button">小说</button>
+        <button class="side-tab" data-side="memories" type="button">记忆库</button>
+        <button class="side-tab" data-side="materials" type="button">素材库</button>
+      </nav>
+      <section id="novelsSide" class="side-view">
+        <div class="side-head"><strong>作品目录</strong><button id="newBook" class="icon-button" title="新增小说" type="button">＋</button><button id="refreshLibrary" class="icon-button" title="刷新目录" type="button">↻</button></div>
+        <div id="bookTree" class="side-scroll"><div class="empty">正在读取作品目录</div></div>
+      </section>
+      <section id="memoriesSide" class="side-view hidden">
+        <div class="side-head"><strong>记忆库</strong><button id="checkMemories" class="icon-button" title="记忆检查" type="button">✓</button><button id="newMemory" class="icon-button" title="新增记忆" type="button">＋</button><button id="refreshMemories" class="icon-button" title="刷新记忆" type="button">↻</button></div>
+        <div style="padding:8px 8px 0"><input id="memorySearch" class="search" placeholder="搜索记忆" /></div>
+        <div id="memoryList" class="side-scroll"><div class="empty">选择作品后查看记忆</div></div>
+      </section>
+      <section id="materialsSide" class="side-view hidden">
+        <div class="side-head"><strong>素材库</strong><button id="newMaterial" class="icon-button" title="新增素材" type="button">＋</button><button id="refreshMaterials" class="icon-button" title="刷新素材" type="button">↻</button></div>
+        <div style="padding:8px 8px 0"><input id="materialSearch" class="search" placeholder="搜索素材" /></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px"><button id="generateWorld" class="small-button" type="button">生成世界观</button><button id="generateCharacter" class="small-button" type="button">生成人物</button></div>
+        <div id="materialList" class="side-scroll"><div class="empty">选择作品后查看素材</div></div>
+      </section>
+    </aside>
+
+    <section class="control-panel">
+      <div class="control-scroll">
+        <div class="field"><label for="bookId">当前作品</label><input id="bookId" value="002" autocomplete="off" /></div>
+        <div class="field"><label for="taskCode">写作任务</label><select id="taskCode"><option value="NW">新文创作</option><option value="CT">文章续写</option><option value="PW">章节补写</option><option value="RV">原文修改</option><option value="BD">世界观创作</option><option value="CH">人物创作</option></select></div>
+        <div id="targetHint" class="target">正在自动确定章节...</div>
+        <div class="field"><label for="setting">写作要求</label><textarea id="setting" placeholder="输入剧情方向、修改要求或素材设定"></textarea></div>
+        <label class="checkline"><input id="refine" type="checkbox" /> 智能细化写作要求</label>
+        <button id="generate" class="command primary" type="button" disabled>提交并生成</button>
+      </div>
+      <details id="statusDock" class="status-dock" open><summary><span class="status-dot"></span><span id="statusCurrent" class="status-current">正在连接网页服务</span></summary><pre id="statusLog" class="status-log"></pre></details>
+    </section>
+
+    <section class="workspace">
+      <div id="chapterBar" class="workspace-bar">
+        <div class="workspace-title"><strong id="editorLocation">尚未选择章节</strong><span id="editorState">从左侧目录选择章节，或生成新内容</span></div>
+        <button id="discard" class="toolbar-button" type="button" disabled>放弃修改</button>
+        <button id="save" class="toolbar-button" type="button" disabled>保存修改</button>
+        <button id="extractMaterial" class="toolbar-button" type="button" disabled>提取素材</button>
+        <button id="archive" class="toolbar-button primary" type="button" disabled>保存并归档</button>
+      </div>
+      <div id="managerBar" class="workspace-bar hidden"><button id="backToChapter" class="toolbar-button" type="button">返回正文</button><div class="workspace-title"><strong id="managerTitle">资料编辑</strong><span id="managerState"></span></div></div>
+      <div id="chapterWorkspace" class="workspace-body"><div id="editorEmpty" class="editor-empty">选择章节后即可在这里阅读和修改正文</div><div id="editorSheet" class="editor-sheet hidden"><input id="chapterTitle" aria-label="章节标题" placeholder="章节标题" /><textarea id="chapterText" aria-label="章节正文" placeholder="章节正文"></textarea></div></div>
+      <div id="memoryWorkspace" class="workspace-body hidden"><form id="memoryForm" class="manager-form"><h2 id="memoryFormTitle">新增记忆</h2><div class="field-grid"><div class="field"><label for="memoryStore">记忆板块</label><select id="memoryStore"><option value="canon_memory">核心设定</option><option value="chapter_memory">章节记忆</option><option value="state_timeline_memory">状态时间线</option><option value="relation_hook_memory">关系与伏笔</option></select></div><div class="field"><label for="memoryType">记忆类型</label><input id="memoryType" value="user_note" required /></div></div><div class="field"><label for="memoryContent">记忆内容</label><textarea id="memoryContent" required></textarea></div><div class="field-grid"><div class="field"><label for="memoryImportance">重要度（0～1）</label><input id="memoryImportance" type="number" min="0" max="1" step="0.05" value="0.6" /></div><div class="field"><label for="memoryChapter">来源章节</label><input id="memoryChapter" type="number" min="0" value="0" /></div><div class="field"><label for="memoryStatus">状态</label><select id="memoryStatus"><option value="active">有效</option><option value="archived">已归档</option></select></div><div class="field"><label for="memoryHook">伏笔状态</label><select id="memoryHook"><option value="">无</option><option value="open">开放</option><option value="resolved">已回收</option><option value="abandoned">已放弃</option></select></div></div><div class="field-grid"><div class="field"><label for="memoryEntity">对象名称</label><input id="memoryEntity" /></div><div class="field"><label for="memoryField">对象字段</label><input id="memoryField" /></div></div><div class="field"><label for="memoryCharacters">涉及角色（逗号分隔）</label><input id="memoryCharacters" /></div><div class="field"><label for="memoryItems">涉及物品（逗号分隔）</label><input id="memoryItems" /></div><div class="field"><label for="memoryEvents">涉及事件（逗号分隔）</label><input id="memoryEvents" /></div><div class="field"><label for="memoryNote">用户备注</label><textarea id="memoryNote"></textarea></div><label class="checkline"><input id="memoryCurrent" type="checkbox" checked /> 当前有效状态</label><div class="manager-actions"><button class="toolbar-button primary" type="submit">保存记忆</button><button id="deleteMemory" class="toolbar-button danger hidden" type="button">删除记忆</button></div></form></div>
+      <div id="materialWorkspace" class="workspace-body hidden"><form id="materialForm" class="manager-form"><h2 id="materialFormTitle">新增素材</h2><div class="field-grid"><div class="field"><label for="materialCategory">素材类型</label><select id="materialCategory"></select></div><div class="field"><label for="materialName">名称</label><input id="materialName" required /></div></div><div id="materialFields"></div><div class="field"><label for="materialNote">用户备注</label><textarea id="materialNote"></textarea></div><div class="manager-actions"><button class="toolbar-button primary" type="submit">保存素材</button><button id="syncMaterial" class="toolbar-button hidden" type="button">同步至记忆库</button><button id="deleteMaterial" class="toolbar-button danger hidden" type="button">删除素材</button></div></form></div>
+      <div id="previewWorkspace" class="workspace-body preview-workspace hidden"><div class="manager-form preview-manager"><h2 id="previewTitle">生成结果待确认</h2><div id="previewList" class="preview-list"></div></div><div class="preview-actions"><button id="confirmPreview" class="toolbar-button primary" type="button">确认保存</button><button id="cancelPreview" class="toolbar-button" type="button">取消</button></div></div>
+    </section>
+  </main>
+
+  <button id="assistantLauncher" class="assistant-launcher" title="打开AI助手" type="button">AI</button>
+  <div id="entryDialog" class="dialog-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="entryTitle">
+    <form id="entryForm" class="dialog-panel">
+      <h2 id="entryTitle">新增小说</h2>
+      <div id="entryWarning" class="dialog-warning hidden"></div>
+      <div id="auditScopeFields" class="audit-scope-fields hidden">
+        <div class="field"><label for="auditScopeMode">审计范围</label><select id="auditScopeMode"><option value="current">当前章节</option><option value="chapters">选择章节（最多5章）</option><option value="global">仅全局记忆</option><option value="book">全书审计</option></select></div>
+        <div id="auditChapterPicker" class="audit-chapter-picker hidden"></div>
+        <div id="auditScopeHint" class="audit-scope-hint"></div>
+      </div>
+      <div class="field"><label id="entryLabel" for="entryName">小说名称</label><input id="entryName" maxlength="200" autocomplete="off" required /></div>
+      <div class="dialog-actions"><button id="cancelEntry" class="toolbar-button" type="button">取消</button><button id="confirmEntry" class="toolbar-button primary" type="submit">确认新增</button></div>
+    </form>
+  </div>
+  <section id="assistant" class="assistant hidden" aria-label="AI助手">
+    <div id="assistantHead" class="assistant-head"><strong>AI 助手</strong><span id="assistantMode" style="font-size:11px;opacity:.75">普通对话</span><button id="assistantMaximize" title="最大化" type="button">□</button><button id="assistantMinimize" title="最小化" type="button">−</button><button id="assistantClose" title="关闭" type="button">×</button></div>
+    <div class="assistant-quick"><button type="button" data-rag="true" data-question="检查当前章节是否与已有设定冲突">检查冲突</button><button type="button" data-rag="true" data-question="总结主要人物当前状态">人物状态</button><button type="button" data-rag="true" data-question="列出尚未回收的伏笔">未回收伏笔</button><button type="button" data-question="分析我选中的正文应该如何修改">修改建议</button></div>
+    <div id="assistantChat" class="assistant-chat"></div>
+    <div class="assistant-compose"><textarea id="assistantQuestion" placeholder="询问人物、设定、伏笔或修改建议"></textarea><div class="assistant-compose-row"><span id="selectionHint">未引用正文</span><button id="assistantSend" type="button">发送</button></div></div>
+    <div id="assistantResize" class="assistant-resize" aria-hidden="true"></div>
+  </section>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const state = { ws: null, connected: false, busy: false, books: [], currentBookId: "", selectedChapterId: 0, targetChapterId: 0, sessionId: "", generationAllowed: false, editorDirty: false, editorIsDraft: false, original: null, pendingGenerationBase: null, entryMode: "", entryBookId: "", memories: [], materials: [], reviews: [], memoryCache: {}, materialCache: {}, reviewCache: {}, expandedMemoryBooks: {}, expandedMaterialBooks: {}, expandedMemorySections: {}, expandedMaterialSections: {}, materialSchemas: {}, selectedMemoryId: "", selectedMemoryBookId: "", selectedMaterialId: "", selectedMaterialBookId: "", generationId: "", previewMode: "", previewData: [], previewBookId: "", auditSessionId: "", auditSnapshotId: "", assistantMaximized: false };
+
+    function timestamp() { return new Date().toLocaleTimeString(); }
+    function activity(message, error = false) { $("statusCurrent").textContent = message; $("statusLog").textContent = `${timestamp()}  ${message}\n${$("statusLog").textContent}`.slice(0, 9000); $("statusCurrent").style.color = error ? "var(--danger)" : ""; }
+    function setConnection(message) { $("connection").textContent = message; }
+    function splitNames(value) { return [...new Set(String(value || "").split(/[,，、;；\n]+/).map(v => v.trim()).filter(Boolean))]; }
+    function displayValue(value) { return Array.isArray(value) ? value.join("、") : String(value || ""); }
+    function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char])); }
+    async function api(path, options = {}) { const response = await fetch(path, { headers: {"Content-Type":"application/json", ...(options.headers || {})}, ...options }); const body = await response.json().catch(() => ({})); if (!response.ok) throw new Error(body.detail || `请求失败 (${response.status})`); return body; }
+
+    function setBusy(busy, message = "处理中...") { state.busy = busy; if (busy) activity(message); updateControls(); }
+    function updateControls() { const ready = state.connected && !state.busy; $("bookId").disabled = !ready; $("taskCode").disabled = !ready; $("newBook").disabled = !ready; $("checkMemories").disabled = !ready || !(state.currentBookId || $("bookId").value.trim()); $("generate").disabled = !ready || !state.generationAllowed; $("save").disabled = !ready || !state.editorDirty || !state.selectedChapterId; $("extractMaterial").disabled = !ready || !state.selectedChapterId || !$("chapterText").value.trim(); $("archive").disabled = !ready || !state.selectedChapterId || (!state.editorDirty && !state.editorIsDraft); $("discard").disabled = !ready || !state.editorDirty; $("assistantSend").disabled = !ready; }
+    function send(data, message) { if (!state.connected || !state.ws || state.ws.readyState !== WebSocket.OPEN) { activity("网页服务尚未连接", true); return; } if (state.busy) { activity("当前操作尚未完成，请稍候", true); return; } setBusy(true, message); state.ws.send(JSON.stringify(data)); }
+    function currentBook() { return state.books.find(book => book.book_id === state.currentBookId); }
+    function chapterLabel(chapterId) { return `第${chapterId}章`; }
+
+    function renderLibrary() { const root = $("bookTree"); if (!state.books.length) { root.innerHTML = '<div class="empty">暂无作品</div>'; return; } root.innerHTML = ""; state.books.forEach(book => { const wrap = document.createElement("div"); wrap.className = "tree-book"; const head = document.createElement("div"); head.className = "tree-book-head"; const title = document.createElement("button"); title.type = "button"; title.className = `tree-book-title ${book.book_id === state.currentBookId ? "active" : ""}`; title.textContent = book.name || book.book_id; title.title = book.name || book.book_id; title.onclick = () => { if (confirmDiscard()) chooseBook(book.book_id); }; const add = document.createElement("button"); add.type = "button"; add.className = "tree-add"; add.title = `为${book.name || book.book_id}新增章节`; add.textContent = "＋"; add.onclick = event => { event.stopPropagation(); createChapter(book.book_id); }; head.append(title, add); wrap.appendChild(head); (book.chapters || []).forEach(chapter => { const row = document.createElement("button"); row.type = "button"; row.className = `chapter-row ${book.book_id === state.currentBookId && chapter.chapter_id === state.selectedChapterId ? "active" : ""}`; row.textContent = `${chapterLabel(chapter.chapter_id)} ${chapter.title || "未命名"}${chapter.is_draft ? "（草稿）" : ""}`; row.onclick = () => { if (confirmDiscard()) { chooseBook(book.book_id, false); chooseChapter(chapter.chapter_id); } }; wrap.appendChild(row); }); root.appendChild(wrap); }); }
+    function openEntryDialog(mode, bookId = "") {
+      state.entryMode = mode; state.entryBookId = bookId;
+      $("entryDialog").classList.remove("audit-mode");
+      $("entryWarning").classList.add("hidden"); $("entryWarning").textContent = "";
+      $("auditScopeFields").classList.add("hidden");
+      $("confirmEntry").textContent = "确认新增";
+      if (mode === "book") {
+        $("entryTitle").textContent = "新增小说"; $("entryLabel").textContent = "小说名称";
+        $("entryName").value = ""; $("entryName").placeholder = "请输入小说名称";
+      } else if (mode === "chapter") {
+        const book = state.books.find(item => item.book_id === bookId);
+        const chapterId = Number(book?.chapter_count || 0) + 1;
+        $("entryTitle").textContent = `新增${chapterLabel(chapterId)}`; $("entryLabel").textContent = "章节标题";
+        $("entryName").value = chapterLabel(chapterId); $("entryName").placeholder = "请输入章节标题";
+      }
+      $("entryDialog").classList.remove("hidden"); $("entryName").focus(); $("entryName").select();
+    }
+    function renderAuditChapterPicker() {
+      const picker = $("auditChapterPicker"), chapters = currentBook()?.chapters || [];
+      picker.innerHTML = "";
+      const preferred = Number(state.selectedChapterId || chapters[chapters.length - 1]?.chapter_id || 0);
+      chapters.forEach(chapter => {
+        const label = document.createElement("label"), input = document.createElement("input"), text = document.createElement("span");
+        input.type = "checkbox"; input.value = String(chapter.chapter_id); input.checked = Number(chapter.chapter_id) === preferred;
+        input.onchange = () => {
+          const checked = [...picker.querySelectorAll('input[type="checkbox"]:checked')];
+          if (checked.length > 5) { input.checked = false; activity("一次最多选择5个章节", true); }
+          updateAuditScopeUi();
+        };
+        text.textContent = `${chapterLabel(chapter.chapter_id)} ${chapter.title || "未命名"}`;
+        label.append(input, text); picker.appendChild(label);
+      });
+      if (!chapters.length) picker.innerHTML = '<div class="empty">当前作品暂无章节记忆</div>';
+    }
+    function updateAuditScopeUi() {
+      const mode = $("auditScopeMode").value;
+      $("auditChapterPicker").classList.toggle("hidden", mode !== "chapters");
+      if (mode === "current") $("auditScopeHint").textContent = state.selectedChapterId ? `只审计${chapterLabel(state.selectedChapterId)}产生的记忆，并与相关记忆对照。` : "请先在作品目录中选择章节。";
+      else if (mode === "chapters") { const count = $("auditChapterPicker").querySelectorAll('input[type="checkbox"]:checked').length; $("auditScopeHint").textContent = `已选择${count}章；每次使用1条查询记忆和最多9条候选记忆。`; }
+      else if (mode === "global") $("auditScopeHint").textContent = "只检查核心设定数据库中的全局记忆。";
+      else $("auditScopeHint").textContent = "检查全书有效记忆，耗时和Token消耗最高。";
+    }
+    function selectedAuditScope() {
+      const mode = $("auditScopeMode").value;
+      if (mode === "current") {
+        if (!state.selectedChapterId) throw new Error("请先选择需要审计的章节");
+        return {scope_mode:"chapters", chapter_ids:[Number(state.selectedChapterId)], label:chapterLabel(state.selectedChapterId)};
+      }
+      if (mode === "chapters") {
+        const chapterIds = [...$("auditChapterPicker").querySelectorAll('input[type="checkbox"]:checked')].map(input => Number(input.value));
+        if (!chapterIds.length) throw new Error("请至少选择一个章节");
+        if (chapterIds.length > 5) throw new Error("一次最多选择5个章节");
+        return {scope_mode:"chapters", chapter_ids:chapterIds, label:`${chapterIds.length}个章节`};
+      }
+      if (mode === "global") return {scope_mode:"global", chapter_ids:[], label:"全局记忆"};
+      return {scope_mode:"book", chapter_ids:[], label:"全书记忆"};
+    }
+    function openAuditConfirmation(bookId) {
+      state.entryMode = "audit"; state.entryBookId = bookId;
+      $("entryDialog").classList.add("audit-mode");
+      $("entryTitle").textContent = "⚠ 记忆检查风险提示";
+      $("entryWarning").textContent = "该功能仅为测试版，可能存在未知 BUG，且 Token 和时间消耗可能很高。首次仅执行只读检查，不会立即修改记忆库。";
+      $("entryWarning").classList.remove("hidden"); $("auditScopeFields").classList.remove("hidden");
+      $("entryLabel").textContent = "请输入“确认”继续执行"; $("entryName").value = ""; $("entryName").placeholder = "确认";
+      $("confirmEntry").textContent = "继续执行";
+      const currentOption = $("auditScopeMode").querySelector('option[value="current"]');
+      currentOption.disabled = !state.selectedChapterId; $("auditScopeMode").value = state.selectedChapterId ? "current" : "chapters";
+      renderAuditChapterPicker(); updateAuditScopeUi();
+      $("entryDialog").classList.remove("hidden"); $("entryName").focus();
+    }
+    function closeEntryDialog() {
+      $("entryDialog").classList.add("hidden"); $("entryDialog").classList.remove("audit-mode");
+      $("entryWarning").classList.add("hidden"); $("entryWarning").textContent = "";
+      $("auditScopeFields").classList.add("hidden"); $("confirmEntry").textContent = "确认新增";
+      state.entryMode = ""; state.entryBookId = "";
+    }
+    function createBook() { openEntryDialog("book"); }
+    function createChapter(bookId) { if (!confirmDiscard()) return; openEntryDialog("chapter", bookId); }
+    async function saveEntry() {
+      const value = $("entryName").value.trim(); let auditScope = null;
+      if (state.entryMode === "audit") {
+        if (value !== "确认") { activity("请输入“确认”后再继续执行记忆检查", true); $("entryName").focus(); $("entryName").select(); return; }
+        try { auditScope = selectedAuditScope(); } catch (error) { activity(error.message, true); return; }
+      }
+      if (!value) { activity(state.entryMode === "book" ? "小说名称不能为空" : "章节标题不能为空", true); $("entryName").focus(); return; }
+      const button = $("confirmEntry"); if (button.disabled) return; button.disabled = true;
+      try {
+        if (state.entryMode === "audit") {
+          const bookId = state.entryBookId; closeEntryDialog();
+          send({type:"audit_memories",book_id:bookId,scope_mode:auditScope.scope_mode,chapter_ids:auditScope.chapter_ids}, `正在检查${auditScope.label}`); return;
+        }
+        if (state.entryMode === "book") { const data = await api("/api/books", {method:"POST", body:JSON.stringify({name:value})}); closeEntryDialog(); applyLibrary(data.books); chooseBook(data.book.book_id); activity(`已创建小说《${data.book.name}》`); return; }
+        const bookId = state.entryBookId; const data = await api(`/api/books/${encodeURIComponent(bookId)}/chapters`, {method:"POST", body:JSON.stringify({title:value})}); closeEntryDialog(); applyLibrary(data.books); chooseBook(bookId, false); chooseChapter(data.chapter.chapter_id); activity(`已创建${chapterLabel(data.chapter.chapter_id)}，可以直接开始写作`);
+      } catch (error) { activity(error.message, true); } finally { button.disabled = false; }
+    }
+    function confirmDiscard() { return !state.editorDirty || confirm("当前正文尚未保存，确定放弃修改吗？"); }
+    function chooseBook(bookId, prepare = true) { state.currentBookId = bookId; $("bookId").value = bookId; state.selectedChapterId = 0; state.sessionId = ""; clearEditor(); renderLibrary(); if (prepare) prepareSession(); if (!$("memoriesSide").classList.contains("hidden")) { state.expandedMemoryBooks[bookId] = true; loadMemories(bookId); } if (!$("materialsSide").classList.contains("hidden")) { state.expandedMaterialBooks[bookId] = true; loadMaterials(bookId); } renderAssistantHistory(); }
+    function chooseChapter(chapterId) { state.selectedChapterId = Number(chapterId); showWorkspace("chapter"); send({type:"load_chapter", book_id:state.currentBookId, chapter_id:state.selectedChapterId}, `正在载入${chapterLabel(chapterId)}`); }
+    function clearEditor() { state.selectedChapterId = 0; state.original = null; state.editorDirty = false; state.editorIsDraft = false; $("editorEmpty").classList.remove("hidden"); $("editorSheet").classList.add("hidden"); $("editorLocation").textContent = "尚未选择章节"; $("editorState").textContent = "从左侧目录选择章节，或生成新内容"; updateControls(); }
+    function showEditor(chapter, generated = false) { state.selectedChapterId = Number(chapter.chapter_id); state.editorIsDraft = Boolean(chapter.is_draft || generated); state.original = {title:chapter.title || "", text:chapter.text || ""}; state.editorDirty = false; $("chapterTitle").value = state.original.title; $("chapterText").value = state.original.text; $("editorEmpty").classList.add("hidden"); $("editorSheet").classList.remove("hidden"); $("editorLocation").textContent = `${chapterLabel(state.selectedChapterId)} · ${state.currentBookId}`; $("editorState").textContent = state.editorIsDraft ? "本地草稿，尚未归档" : "已归档章节"; showWorkspace("chapter"); renderLibrary(); updateControls(); }
+    function markDirty() { if (!state.original) return; state.editorDirty = $("chapterTitle").value !== state.original.title || $("chapterText").value !== state.original.text; if ($("taskCode").value === "PW" && state.selectedChapterId) state.generationAllowed = Boolean($("chapterText").value.trim()); $("editorState").textContent = state.editorDirty ? "有未保存修改" : (state.editorIsDraft ? "本地草稿，尚未归档" : "已归档章节"); updateControls(); updateSelectionHint(); }
+    function targetDescription(task, selected, target) { if (task === "NW") return target === 1 ? "生成第一章" : "新文从第一章开始"; if (task === "CT") return selected > 0 ? `根据第${selected}章续写第${target}章` : "请选择续写来源章节"; if (task === "PW") return selected > 0 ? `补写第${selected}章现有正文` : "请从小说目录选择需要补写的章节"; if (task === "RV") return selected > 0 ? `修改第${selected}章` : "请从小说目录选择章节"; if (task === "BD") return "独立生成世界观素材，不生成正文"; if (task === "CH") return "独立生成人物素材，不生成正文"; return ""; }
+    function prepareSession() { if (!state.connected) return; const bookId = $("bookId").value.trim(); const task = $("taskCode").value; if (!bookId) { state.generationAllowed = false; updateControls(); return; } state.currentBookId = bookId; if (["BD","CH"].includes(task)) { state.sessionId = ""; state.generationAllowed = true; $("targetHint").textContent = targetDescription(task, 0, 0); updateControls(); return; } const target = task === "CT" ? state.selectedChapterId + 1 : state.selectedChapterId; $("targetHint").textContent = targetDescription(task, state.selectedChapterId, target); send({type:"start_session", book_id:bookId, task_code:task, chapter_id:state.selectedChapterId}, "正在准备写作环境"); }
+
+    function applyLibrary(books) { state.books = books || []; if (!state.currentBookId) state.currentBookId = $("bookId").value.trim() || state.books[0]?.book_id || ""; renderLibrary(); renderMemories(); renderMaterials(); }
+    function progressText(event) { const seconds = Number(event.elapsed_seconds || 0).toFixed(1); if (event.state === "running") return `仍在进行：${event.message}，${seconds}秒`; if (event.state === "completed") return `完成：${event.message}，${seconds}秒`; if (event.state === "failed") return `失败：${event.message}，${seconds}秒`; return event.message; }
+
+    function handleResult(payload) {
+      const data = payload.data || {};
+      const type = payload.request_type;
+      if (type === "library") { applyLibrary(data.books); prepareSession(); activity("作品目录已更新"); return; }
+      if (type === "load_chapter") { showEditor(data.chapter); activity(`${chapterLabel(data.chapter.chapter_id)}已载入`); prepareSession(); return; }
+      if (type === "start_session") { state.sessionId = data.session?.session_id || ""; state.targetChapterId = Number(data.target_chapter_id || 0); const mode = data.task_mode || $("taskCode").value; const currentTextReady = mode === "PW" && state.selectedChapterId && $("chapterText").value.trim(); state.generationAllowed = Boolean(data.generation_allowed || currentTextReady); $("targetHint").textContent = currentTextReady && !data.generation_allowed ? `将补写第${state.selectedChapterId}章当前正文` : (data.message || targetDescription(mode, state.selectedChapterId, state.targetChapterId)); updateControls(); activity(currentTextReady && !data.generation_allowed ? "当前正文可以直接补写" : (data.message || "写作环境已就绪")); return; }
+      if (type === "submit_setting") { const mode = data.task_mode || $("taskCode").value; const base = state.pendingGenerationBase; showEditor({...data.draft, is_draft:true}, true); state.sessionId = data.session?.session_id || state.sessionId; if (mode === "PW" && base) { state.original = base; state.editorDirty = data.draft.title !== base.title || data.draft.text !== base.text; state.editorIsDraft = true; $("editorState").textContent = "补写内容待保存"; activity("章节补写完成，请确认后保存"); } else { state.original = {title:data.draft.title, text:data.draft.text}; state.editorDirty = false; state.editorIsDraft = true; activity("内容生成完成，已进入本地草稿"); } state.pendingGenerationBase = null; updateControls(); return; }
+      if (type === "save_local") { state.original = {title:$("chapterTitle").value, text:$("chapterText").value}; state.editorDirty = false; state.editorIsDraft = true; applyLibrary(data.books); $("editorState").textContent = "已保存到本地，尚未归档"; activity("正文已保存到本地，未调用Qwen"); updateControls(); return; }
+      if (type === "archive_editor") { state.original = {title:$("chapterTitle").value, text:$("chapterText").value}; state.editorDirty = false; state.editorIsDraft = false; delete state.memoryCache[state.currentBookId]; applyLibrary(data.books); if (!$("memoriesSide").classList.contains("hidden")) loadMemories(state.currentBookId, true); $("editorState").textContent = "已归档章节"; activity("章节归档完成，未自动提取素材"); updateControls(); return; }
+      if (type === "consult") { $("assistantMode").textContent = data.used_rag ? "已查询作品资料" : "普通对话"; addAssistantMessage("assistant", data.answer, data.references || [], true, Boolean(data.used_rag)); activity(data.used_rag ? "AI助手已查询作品资料并回答" : "AI助手已回答"); return; }
+      if (type === "generate_material") { state.generationId = data.generation_id; state.previewMode = "generation"; state.previewBookId = state.currentBookId; state.previewData = data.candidates || []; loadMaterials(state.previewBookId, true).then(() => showPreview(`${data.task_code === "BD" ? "世界观" : "人物"}生成结果`, state.previewData)); activity("素材生成完成，可修改后确认保存"); return; }
+      if (type === "confirm_material_generation") { const bookId = state.previewBookId || state.currentBookId; activity(data.warning || "素材与对应记忆已保存", Boolean(data.warning)); state.generationId = ""; state.previewBookId = ""; state.previewData = []; delete state.memoryCache[bookId]; loadMaterials(bookId, true); if (!$("memoriesSide").classList.contains("hidden")) loadMemories(bookId, true); showWorkspace("material"); return; }
+      if (type === "extract_materials") { if (data.draft_saved) { state.original = {title:$("chapterTitle").value, text:$("chapterText").value}; state.editorDirty = false; state.editorIsDraft = true; if (data.books) applyLibrary(data.books); $("editorState").textContent = "已保存到本地，尚未归档"; } activity(`正文素材提取完成，共${data.candidate_count}条`); const bookId = state.currentBookId; loadMaterials(bookId, true).then(() => { if (data.review) showReview(data.review, bookId); }); updateControls(); return; }
+      if (type === "audit_memories") { showAuditPreview(data); activity(`记忆检查完成，发现${data.findings?.length || 0}个问题和${data.operations?.length || 0}项可执行调整`); return; }
+      if (type === "apply_memory_audit") { const bookId = state.previewBookId || state.currentBookId; delete state.memoryCache[bookId]; loadMemories(bookId, true); showAuditApplied(data.audit || {}); activity("记忆精简已应用，并已创建可撤销快照"); return; }
+      if (type === "rollback_memory_audit") { const bookId = state.previewBookId || state.currentBookId; delete state.memoryCache[bookId]; loadMemories(bookId, true); resetPreview(); showWorkspace("chapter"); activity("已撤销本次记忆整理"); return; }
+    }
+
+    function connect() { const protocol = location.protocol === "https:" ? "wss" : "ws"; const ws = new WebSocket(`${protocol}://${location.host}/ws`); state.ws = ws; ws.onopen = () => setConnection("正在确认服务"); ws.onmessage = event => { const message = JSON.parse(event.data); if (message.type === "connected") { state.connected = true; setConnection("已连接"); setBusy(false); send({type:"library"}, "正在读取作品目录"); return; } if (message.type === "busy") { setBusy(Boolean(message.busy)); return; } if (message.type === "progress") { activity(progressText(message.event), message.event.state === "failed"); return; } if (message.type === "status") { activity(message.message); return; } if (message.type === "result") { handleResult(message); return; } if (message.type === "error") { if (message.request_type === "archive_editor") { state.editorDirty = false; state.editorIsDraft = true; state.original = {title:$("chapterTitle").value, text:$("chapterText").value}; $("editorState").textContent = "归档失败，正文已保存到本地"; } if (message.request_type === "submit_setting") state.pendingGenerationBase = null; if (message.request_type === "consult") addAssistantMessage("assistant", `暂时无法回答：${message.message}`); activity(message.message, true); setBusy(false); } }; ws.onclose = () => { state.connected = false; setConnection("连接已断开，正在重连"); setBusy(false); setTimeout(connect, 1500); }; }
+
+    function showSide(name) { ["novels","memories","materials"].forEach(item => { document.querySelector(`[data-side="${item}"]`).classList.toggle("active", item === name); $(`${item}Side`).classList.toggle("hidden", item !== name); }); const bookId = state.currentBookId || $("bookId").value.trim(); if (name === "memories") { if (bookId) state.expandedMemoryBooks[bookId] = true; loadMemories(bookId); } if (name === "materials") { if (bookId) state.expandedMaterialBooks[bookId] = true; loadMaterials(bookId); } }
+    function showWorkspace(name) { const map = {chapter:"chapterWorkspace", memory:"memoryWorkspace", material:"materialWorkspace", preview:"previewWorkspace"}; Object.entries(map).forEach(([key,id]) => $(id).classList.toggle("hidden", key !== name)); $("chapterBar").classList.toggle("hidden", name !== "chapter"); $("managerBar").classList.toggle("hidden", name === "chapter"); if (name !== "chapter") { $("managerTitle").textContent = name === "memory" ? "记忆编辑" : name === "material" ? "素材编辑" : "内容确认"; $("managerState").textContent = state.currentBookId || "未选择作品"; } }
+
+    const memoryStoreLabels = {canon_memory:"核心设定",chapter_memory:"章节记忆",state_timeline_memory:"状态时间线",relation_hook_memory:"关系与伏笔"};
+    function memorySources(item) { const values = item.metadata?.source_chapters || []; const sources = values.map(Number).filter(value => Number.isInteger(value) && value >= 0); if (!sources.length) sources.push(Number(item.source_chapter || 0)); return [...new Set(sources)].sort((a,b) => a-b); }
+    async function loadMemories(bookId = state.currentBookId, force = false) { if (!bookId) { renderMemories(); return; } if (!force && state.memoryCache[bookId]) { if (bookId === state.currentBookId) state.memories = state.memoryCache[bookId]; renderMemories(); return; } try { const data = await api(`/api/books/${encodeURIComponent(bookId)}/memories`); const rows = (data.groups || []).flatMap(group => group.memories || []); state.memoryCache[bookId] = rows; if (bookId === state.currentBookId) state.memories = rows; renderMemories(); } catch (error) { activity(error.message, true); } }
+    async function toggleMemoryBook(bookId) { state.expandedMemoryBooks[bookId] = !state.expandedMemoryBooks[bookId]; if (state.expandedMemoryBooks[bookId] && !state.memoryCache[bookId]) await loadMemories(bookId); else renderMemories(); }
+    function appendMemorySection(root, bookId, sectionKey, label, memories) { const key = `${bookId}:${sectionKey}`; const open = Boolean(state.expandedMemorySections[key]); const head = document.createElement("button"); head.type = "button"; head.className = "tree-section-title"; head.textContent = `${open ? "▾" : "▸"} ${label}（${memories.length}）`; head.onclick = () => { state.expandedMemorySections[key] = !open; renderMemories(); }; root.appendChild(head); if (!open) return; Object.entries(memoryStoreLabels).forEach(([store,storeLabel]) => { const rows = memories.filter(item => item.store_type === store); if (!rows.length) return; const group = document.createElement("div"); group.className = "tree-memory-group"; group.textContent = `${storeLabel} ${rows.length}`; root.appendChild(group); rows.forEach(item => { const row = document.createElement("button"); row.type = "button"; row.className = `record-row tree-record ${item.memory_id === state.selectedMemoryId && bookId === state.selectedMemoryBookId ? "active" : ""}`; row.innerHTML = `<strong>${escapeHtml(item.content)}</strong><span>${escapeHtml(item.memory_type)}${item.user_managed ? " · 用户维护" : ""}</span>`; row.onclick = () => selectMemory(item, bookId); root.appendChild(row); }); }); }
+    function renderMemories() { const query = $("memorySearch").value.trim().toLowerCase(); const root = $("memoryList"); root.innerHTML = ""; state.books.forEach(book => { const bookId = book.book_id; const expanded = Boolean(state.expandedMemoryBooks[bookId]); const rows = state.memoryCache[bookId]; const wrap = document.createElement("div"); wrap.className = "tree-book"; const title = document.createElement("button"); title.type = "button"; title.className = `tree-book-title ${bookId === state.currentBookId ? "active" : ""}`; title.textContent = `${expanded ? "▾" : "▸"} ${book.name || bookId}${rows ? `（${rows.length}）` : ""}`; title.onclick = () => toggleMemoryBook(bookId); wrap.appendChild(title); if (expanded) { if (!rows) { const loading = document.createElement("div"); loading.className = "tree-loading"; loading.textContent = "正在读取记忆..."; wrap.appendChild(loading); } else { const filtered = rows.filter(item => !query || `${item.content} ${item.memory_type} ${item.entity_name || ""}`.toLowerCase().includes(query)); const globalRows = filtered.filter(item => memorySources(item).every(value => value === 0)); const crossRows = filtered.filter(item => memorySources(item).filter(value => value > 0).length > 1); if (globalRows.length) appendMemorySection(wrap, bookId, "global", "全局记忆", globalRows); const chapterIds = [...new Set(filtered.flatMap(item => { const sources = memorySources(item).filter(value => value > 0); return sources.length > 1 ? [] : sources; }))].sort((a,b) => a-b); chapterIds.forEach(chapterId => { const chapter = (book.chapters || []).find(item => Number(item.chapter_id) === chapterId); const chapterRows = filtered.filter(item => { const sources = memorySources(item).filter(value => value > 0); return sources.length === 1 && sources[0] === chapterId; }); appendMemorySection(wrap, bookId, `chapter-${chapterId}`, `${chapterLabel(chapterId)} ${chapter?.title || ""}`.trim(), chapterRows); }); if (crossRows.length) appendMemorySection(wrap, bookId, "cross", "跨章节记忆", crossRows); if (!filtered.length) { const empty = document.createElement("div"); empty.className = "tree-loading"; empty.textContent = "没有符合条件的记忆"; wrap.appendChild(empty); } } } root.appendChild(wrap); }); if (!state.books.length) root.innerHTML = '<div class="empty">暂无作品记忆</div>'; }
+    function newMemory() { const bookId = state.currentBookId || $("bookId").value.trim(); if (!bookId) { activity("请先选择作品", true); return; } state.selectedMemoryId = ""; state.selectedMemoryBookId = bookId; $("memoryForm").reset(); $("memoryStore").value = "canon_memory"; $("memoryType").value = "user_note"; $("memoryImportance").value = "0.6"; $("memoryChapter").value = state.selectedChapterId || "0"; $("memoryStatus").value = "active"; $("memoryCurrent").checked = true; $("memoryFormTitle").textContent = "新增记忆"; $("deleteMemory").classList.add("hidden"); showWorkspace("memory"); }
+    function selectMemory(item, bookId = state.currentBookId) { if (bookId !== state.currentBookId) { if (!confirmDiscard()) return; chooseBook(bookId); } state.selectedMemoryId = item.memory_id; state.selectedMemoryBookId = bookId; $("memoryStore").value = item.store_type; $("memoryType").value = item.memory_type; $("memoryContent").value = item.content; $("memoryImportance").value = item.raw_importance; $("memoryChapter").value = item.source_chapter; $("memoryStatus").value = item.status; $("memoryHook").value = item.hook_status || ""; $("memoryEntity").value = item.entity_name || ""; $("memoryField").value = item.field || ""; $("memoryCharacters").value = (item.character_names || []).join("、"); $("memoryItems").value = (item.item_names || []).join("、"); $("memoryEvents").value = (item.event_names || []).join("、"); $("memoryNote").value = item.note || ""; $("memoryCurrent").checked = Boolean(item.is_current); $("memoryFormTitle").textContent = `${item.store_label} · ${bookId}`; $("deleteMemory").classList.remove("hidden"); showWorkspace("memory"); renderMemories(); }
+    function memoryPayload() { return {store_type:$("memoryStore").value,memory_type:$("memoryType").value.trim(),content:$("memoryContent").value.trim(),raw_importance:Number($("memoryImportance").value),source_chapter:Number($("memoryChapter").value || 0),status:$("memoryStatus").value,hook_status:$("memoryHook").value || null,entity_name:$("memoryEntity").value.trim() || null,field:$("memoryField").value.trim() || null,character_names:splitNames($("memoryCharacters").value),item_names:splitNames($("memoryItems").value),event_names:splitNames($("memoryEvents").value),note:$("memoryNote").value.trim(),is_current:$("memoryCurrent").checked}; }
+
+    async function loadMaterialSchemas() { if (Object.keys(state.materialSchemas).length) return; const data = await api("/api/material-schemas"); state.materialSchemas = data.schemas || {}; $("materialCategory").innerHTML = Object.entries(state.materialSchemas).map(([key,value]) => `<option value="${key}">${escapeHtml(value.label)}</option>`).join(""); renderMaterialFields(); renderMaterials(); }
+    async function loadMaterials(bookId = state.currentBookId, force = false) { if (!bookId) { renderMaterials(); return; } try { await loadMaterialSchemas(); if (!force && state.materialCache[bookId]) { if (bookId === state.currentBookId) { state.materials = state.materialCache[bookId]; state.reviews = state.reviewCache[bookId] || []; } renderMaterials(); return; } const data = await api(`/api/books/${encodeURIComponent(bookId)}/materials`); state.materialCache[bookId] = data.materials || []; state.reviewCache[bookId] = data.reviews || []; if (bookId === state.currentBookId) { state.materials = state.materialCache[bookId]; state.reviews = state.reviewCache[bookId]; } renderMaterials(); } catch (error) { activity(error.message, true); } }
+    async function toggleMaterialBook(bookId) { state.expandedMaterialBooks[bookId] = !state.expandedMaterialBooks[bookId]; if (state.expandedMaterialBooks[bookId] && !state.materialCache[bookId]) await loadMaterials(bookId); else renderMaterials(); }
+    function appendMaterialSection(root, bookId, category, label, materials) { const key = `${bookId}:${category}`; const open = Boolean(state.expandedMaterialSections[key]); const head = document.createElement("button"); head.type = "button"; head.className = "tree-section-title"; head.textContent = `${open ? "▾" : "▸"} ${label}（${materials.length}）`; head.onclick = () => { state.expandedMaterialSections[key] = !open; renderMaterials(); }; root.appendChild(head); if (!open) return; if (!materials.length) { const empty = document.createElement("div"); empty.className = "tree-loading"; empty.textContent = "暂无内容"; root.appendChild(empty); return; } materials.forEach(item => { const row = document.createElement("button"); row.type = "button"; row.className = `record-row tree-record ${item.material_id === state.selectedMaterialId && bookId === state.selectedMaterialBookId ? "active" : ""}`; const source = item.origin === "user" ? "用户维护" : item.origin === "write_agent" ? "Write_Agent" : item.source_chapter ? `第${item.source_chapter}章提取` : "正文提取"; const sync = item.sync_status === "synced" ? "已同步" : item.sync_status === "pending" ? "待更新" : "未同步"; row.innerHTML = `<strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(source)} · ${sync}</span>`; row.onclick = () => selectMaterial(item, bookId); root.appendChild(row); }); }
+    function renderMaterials() { const query = $("materialSearch").value.trim().toLowerCase(); const root = $("materialList"); root.innerHTML = ""; state.books.forEach(book => { const bookId = book.book_id; const expanded = Boolean(state.expandedMaterialBooks[bookId]); const materials = state.materialCache[bookId]; const reviews = state.reviewCache[bookId] || []; const wrap = document.createElement("div"); wrap.className = "tree-book"; const title = document.createElement("button"); title.type = "button"; title.className = `tree-book-title ${bookId === state.currentBookId ? "active" : ""}`; title.textContent = `${expanded ? "▾" : "▸"} ${book.name || bookId}${materials ? `（${materials.length}）` : ""}`; title.onclick = () => toggleMaterialBook(bookId); wrap.appendChild(title); if (expanded) { if (!materials) { const loading = document.createElement("div"); loading.className = "tree-loading"; loading.textContent = "正在读取素材..."; wrap.appendChild(loading); } else { if (reviews.length) { const reviewHead = document.createElement("div"); reviewHead.className = "tree-memory-group"; reviewHead.textContent = `待确认提取 ${reviews.length}`; wrap.appendChild(reviewHead); reviews.forEach(review => { const row = document.createElement("button"); row.type = "button"; row.className = "record-row tree-record review-row"; row.innerHTML = `<strong>第${review.chapter_id}章待确认素材</strong><span>${(review.candidates || []).length} 条</span>`; row.onclick = () => showReview(review, bookId); wrap.appendChild(row); }); } Object.entries(state.materialSchemas).forEach(([category,schema]) => { const rows = materials.filter(item => item.category === category && (!query || `${item.name} ${JSON.stringify(item.fields)}`.toLowerCase().includes(query))); if (!query || rows.length) appendMaterialSection(wrap, bookId, category, schema.label, rows); }); } } root.appendChild(wrap); }); if (!state.books.length) root.innerHTML = '<div class="empty">暂无作品素材</div>'; }
+    function renderMaterialFields(values = {}) { const schema = state.materialSchemas[$("materialCategory").value]; if (!schema) return; $("materialFields").innerHTML = schema.fields.map(field => { const value = Array.isArray(values[field.key]) ? values[field.key].join("\n") : (values[field.key] || ""); const input = field.type === "textarea" || field.type === "list" ? `<textarea data-material-field="${field.key}" data-field-type="${field.type}">${escapeHtml(value)}</textarea>` : `<input data-material-field="${field.key}" data-field-type="${field.type}" value="${escapeHtml(value)}" />`; return `<div class="field"><label>${escapeHtml(field.label)}${field.type === "list" ? "（每行一项）" : ""}</label>${input}</div>`; }).join(""); }
+    function newMaterial(category = "character") { const bookId = state.currentBookId || $("bookId").value.trim(); if (!bookId) { activity("请先选择作品", true); return; } state.selectedMaterialId = ""; state.selectedMaterialBookId = bookId; $("materialForm").reset(); $("materialCategory").value = category; $("materialCategory").disabled = false; renderMaterialFields(); $("materialFormTitle").textContent = "新增素材"; $("deleteMaterial").classList.add("hidden"); $("syncMaterial").classList.add("hidden"); showWorkspace("material"); }
+    function selectMaterial(item, bookId = state.currentBookId) { if (bookId !== state.currentBookId) { if (!confirmDiscard()) return; chooseBook(bookId); } state.selectedMaterialId = item.material_id; state.selectedMaterialBookId = bookId; $("materialCategory").value = item.category; $("materialCategory").disabled = true; $("materialName").value = item.name; $("materialNote").value = item.note || ""; renderMaterialFields(item.fields || {}); $("materialFormTitle").textContent = `${item.category_label} · ${bookId}`; $("deleteMaterial").classList.remove("hidden"); const syncButton = $("syncMaterial"); syncButton.classList.remove("hidden"); syncButton.disabled = item.sync_status === "synced"; syncButton.textContent = item.sync_status === "synced" ? "已同步" : item.sync_status === "pending" ? "更新对应记忆" : "同步至记忆库"; showWorkspace("material"); renderMaterials(); }
+    function materialPayload() { const fields = {}; document.querySelectorAll("[data-material-field]").forEach(input => { fields[input.dataset.materialField] = input.dataset.fieldType === "list" ? splitNames(input.value) : input.value.trim(); }); return {category:$("materialCategory").value,name:$("materialName").value.trim(),fields,note:$("materialNote").value.trim()}; }
+
+    function normalizedMaterialName(value) { return String(value || "").trim().toLocaleLowerCase(); }
+    function renderReviewPreview(candidates, bookId) {
+      const existing = state.materialCache[bookId] || [];
+      $("previewList").innerHTML = candidates.map((item, index) => {
+        const schema = state.materialSchemas[item.category] || {label:item.category, fields:[]};
+        const duplicate = existing.find(row => row.category === item.category && normalizedMaterialName(row.name) === normalizedMaterialName(item.name));
+        const actionOptions = duplicate
+          ? `<option value="merge">合并到现有素材</option><option value="create">另存为新素材</option><option value="skip">忽略</option>`
+          : `<option value="create">保存到素材库</option><option value="skip">忽略</option>`;
+        const fields = (schema.fields || []).map(field => {
+          const value = displayValue(item.fields?.[field.key]);
+          const control = field.type === "list"
+            ? `<textarea data-preview-field="${escapeHtml(field.key)}" data-field-type="list">${escapeHtml(value.replaceAll("、", "\n"))}</textarea>`
+            : `<textarea data-preview-field="${escapeHtml(field.key)}" data-field-type="text">${escapeHtml(value)}</textarea>`;
+          return `<label>${escapeHtml(field.label)}</label>${control}`;
+        }).join("");
+        const duplicateHint = duplicate ? `<div class="preview-duplicate">发现同名${escapeHtml(schema.label)}“${escapeHtml(duplicate.name)}”，默认合并；也可以另存或忽略。</div>` : "";
+        return `<div class="preview-item" data-preview-index="${index}" data-category="${escapeHtml(item.category)}">
+          <div class="preview-choice"><label><input class="preview-enabled" type="checkbox" checked /> 保留</label><strong>${escapeHtml(schema.label)}</strong><select class="preview-action" data-merge-id="${escapeHtml(duplicate?.material_id || "")}">${actionOptions}</select></div>
+          <div class="preview-edit-grid"><label>名称</label><input class="preview-name" value="${escapeHtml(item.name)}" />${fields}</div>${duplicateHint}
+        </div>`;
+      }).join("") || '<div class="empty">没有可保存的素材</div>';
+      $("previewList").querySelectorAll(".preview-item").forEach(node => {
+        const enabled = node.querySelector(".preview-enabled");
+        const action = node.querySelector(".preview-action");
+        const refresh = () => node.classList.toggle("skipped", !enabled.checked || action.value === "skip");
+        enabled.addEventListener("change", refresh);
+        action.addEventListener("change", () => { enabled.checked = action.value !== "skip"; refresh(); });
+      });
+    }
+    function collectReviewDecisions() {
+      return [...$("previewList").querySelectorAll(".preview-item[data-preview-index]")].map(node => {
+        const enabled = node.querySelector(".preview-enabled").checked;
+        const actionSelect = node.querySelector(".preview-action");
+        const action = enabled ? actionSelect.value : "skip";
+        if (action === "skip") return {action:"skip"};
+        const name = node.querySelector(".preview-name").value.trim();
+        if (!name) throw new Error("保留的素材必须填写名称");
+        const fields = {};
+        node.querySelectorAll("[data-preview-field]").forEach(input => { fields[input.dataset.previewField] = input.dataset.fieldType === "list" ? splitNames(input.value) : input.value.trim(); });
+        return {action, material_id:action === "merge" ? actionSelect.dataset.mergeId : "", value:{category:node.dataset.category, name, fields, note:""}};
+      });
+    }
+    function showPreview(title, candidates) { $("previewTitle").textContent = title; renderReviewPreview(candidates, state.previewBookId || state.currentBookId); $("confirmPreview").textContent = "确认保存"; $("confirmPreview").disabled = !candidates.length; $("cancelPreview").textContent = "取消"; showWorkspace("preview"); }
+    function showReview(review, bookId = state.currentBookId) { state.previewMode = "review"; state.previewBookId = bookId; state.previewData = review.candidates || []; state.generationId = review.review_id; showPreview(`第${review.chapter_id}章待确认素材`, state.previewData); }
+    const auditOperationLabels = {create:"新增记忆",update:"更新内容",delete:"删除记忆",compress:"压缩记忆",merge:"合并重复记忆",relink:"修复关联",supersede:"替换旧记忆",archive:"归档记忆",restore:"恢复记忆",update_importance:"调整重要度",flag_conflict:"标记冲突",remove_orphan_link:"移除无效关联",no_op:"无需变更"};
+    function showAuditPreview(data) {
+      const audit = data.audit || {};
+      const coverage = audit.coverage || {};
+      const findings = data.findings || [];
+      const operations = data.operations || [];
+      const scope = audit.scope || {mode:"book",chapter_ids:[]};
+      const scopeLabel = scope.mode === "global" ? "全局记忆" : scope.mode === "chapters" ? `章节 ${scope.chapter_ids?.join("、") || ""}` : "全书记忆";
+      state.previewMode = "audit";
+      state.previewBookId = state.currentBookId;
+      state.auditSessionId = data.session_id || "";
+      state.auditSnapshotId = "";
+      $("previewTitle").textContent = "记忆检查结果";
+      const notice = data.can_apply
+        ? `${scopeLabel}审计已完整结束；共完成${audit.semantic_candidate_reviewed_count || 0}/${audit.semantic_candidate_count || 0}组记忆比较，确认前不会修改记忆库。`
+        : `${scopeLabel}审计未达到安全应用条件，仅供查看，不会修改记忆库。${audit.validation_errors?.length ? ` ${audit.validation_errors[0]}` : ""}`;
+      const findingRows = findings.map((item, index) => {
+        const evidence = Array.isArray(item.evidence) ? item.evidence.join("\n") : "";
+        return `<div class="audit-finding"><strong>${index + 1}. ${escapeHtml(item.summary || item.code || "记忆问题")}</strong><span>${escapeHtml(`${item.severity || "warning"}${item.memory_ids?.length ? ` · ${item.memory_ids.join("、")}` : ""}${evidence ? `\n依据：${evidence}` : ""}`)}</span></div>`;
+      }).join("") || '<div class="empty">本次比较未发现语义问题</div>';
+      const operationRows = operations.map((item, index) => {
+        const content = item.new_content || item.content || item.summary || "";
+        const sources = item.source_ids?.length ? ` · 涉及 ${item.source_ids.join("、")}` : "";
+        return `<div class="audit-operation"><strong>${index + 1}. ${escapeHtml(auditOperationLabels[item.operation] || item.operation || "记忆调整")}</strong>${content ? `<p>${escapeHtml(content)}</p>` : ""}<span>${escapeHtml(`${item.reason || ""}${sources}`)}</span></div>`;
+      }).join("") || '<div class="empty">本次检查无需精简</div>';
+      $("previewList").innerHTML = `<div class="audit-summary"><div><strong>${coverage.total_memory_ids?.length || 0}</strong><span>范围内记忆</span></div><div><strong>${audit.comparison_batch_count || 0}</strong><span>模型批次</span></div><div><strong>${findings.length}</strong><span>发现问题</span></div><div><strong>${operations.length}</strong><span>拟执行操作</span></div></div><div class="audit-notice">${escapeHtml(notice)}</div><h3>审计发现</h3>${findingRows}<h3>拟执行操作</h3>${operationRows}`;
+      $("confirmPreview").textContent = "确认精简";
+      $("confirmPreview").disabled = !data.can_apply || !operations.length;
+      $("cancelPreview").textContent = "关闭";
+      showWorkspace("preview");
+    }
+    function showAuditApplied(audit) { state.previewMode = "audit_applied"; state.auditSnapshotId = audit.snapshot_id || ""; $("previewTitle").textContent = "记忆精简已完成"; $("previewList").innerHTML = `<div class="audit-summary"><div><strong>${audit.operation_count || 0}</strong><span>已执行操作</span></div><div><strong>${audit.model_finding_count || 0}</strong><span>处理问题</span></div><div><strong>${state.auditSnapshotId ? "有" : "无"}</strong><span>撤销快照</span></div></div><div class="audit-notice">记忆库已更新。你可以立即查看结果，或撤销本次整理。</div>`; $("confirmPreview").textContent = "撤销本次整理"; $("confirmPreview").disabled = !state.auditSnapshotId; $("cancelPreview").textContent = "完成"; showWorkspace("preview"); }
+    function resetPreview() { state.generationId = ""; state.previewMode = ""; state.previewData = []; state.previewBookId = ""; state.auditSessionId = ""; state.auditSnapshotId = ""; }
+    async function syncSelectedMaterial() {
+      if (!state.selectedMaterialId) return;
+      const bookId = state.selectedMaterialBookId || state.currentBookId;
+      const path = `/api/books/${encodeURIComponent(bookId)}/materials/${encodeURIComponent(state.selectedMaterialId)}/sync`;
+      try {
+        let result = await api(path, {method:"POST", body:JSON.stringify({overwrite_user:false})});
+        if (result.kind === "material_sync_conflict") {
+          const overwrite = confirm("对应记忆已被用户修改。继续会用当前素材覆盖该记忆，是否继续？");
+          if (!overwrite) { activity("已保留用户修改的记忆"); return; }
+          result = await api(path, {method:"POST", body:JSON.stringify({overwrite_user:true})});
+        }
+        const messages = {created:"已创建对应记忆", updated:"已更新对应记忆", unchanged:"素材与记忆已经一致"};
+        activity(messages[result.action] || "素材已同步至记忆库");
+        state.expandedMemoryBooks[bookId] = true;
+        await Promise.all([loadMaterials(bookId, true), loadMemories(bookId, true)]);
+        const saved = (state.materialCache[bookId] || []).find(item => item.material_id === state.selectedMaterialId);
+        if (saved) selectMaterial(saved, bookId);
+      } catch (error) {
+        activity(error.message, true);
+      }
+    }
+    function startMemoryAudit() { const bookId = state.currentBookId || $("bookId").value.trim(); if (!bookId) { activity("请先选择需要检查的小说", true); return; } openAuditConfirmation(bookId); }
+
+    function assistantKey() { return `novel-assistant:${state.currentBookId || $("bookId").value.trim() || "default"}`; }
+    function assistantHistory() { try { return JSON.parse(localStorage.getItem(assistantKey()) || "[]"); } catch { return []; } }
+    function saveAssistantHistory() { const messages = [...$("assistantChat").querySelectorAll(".bubble")].map(node => ({role:node.dataset.role,text:node.dataset.text,references:JSON.parse(node.dataset.references || "[]"),used_rag:node.dataset.rag === "true"})); localStorage.setItem(assistantKey(), JSON.stringify(messages.slice(-40))); }
+    function formatAssistantInline(value) { return escapeHtml(value).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>"); }
+    function formatAssistantText(value) { return String(value || "").split(/\r?\n/).map(line => { const clean = line.trim(); if (!clean) return '<div style="height:5px"></div>'; const heading = clean.match(/^#{1,3}\s+(.+)$/); if (heading) return `<div class="answer-heading">${formatAssistantInline(heading[1])}</div>`; const ordered = clean.match(/^(\d+)[.、]\s*(.+)$/); if (ordered) return `<div class="answer-list"><span>${ordered[1]}.</span><span>${formatAssistantInline(ordered[2])}</span></div>`; const bullet = clean.match(/^[-*•]\s+(.+)$/); if (bullet) return `<div class="answer-list"><span>•</span><span>${formatAssistantInline(bullet[1])}</span></div>`; return `<p>${formatAssistantInline(clean)}</p>`; }).join(""); }
+    function renderAssistantHistory() { const chat = $("assistantChat"); chat.innerHTML = ""; assistantHistory().forEach(item => addAssistantMessage(item.role, item.text, item.references || [], false, Boolean(item.used_rag))); chat.scrollTop = chat.scrollHeight; }
+    function addAssistantMessage(role, text, references = [], persist = true, usedRag = false) { const chat = $("assistantChat"); const stickToBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 56 || role === "user"; const bubble = document.createElement("div"); bubble.className = `bubble ${role}`; bubble.dataset.role = role; bubble.dataset.text = text; bubble.dataset.references = JSON.stringify(references); bubble.dataset.rag = String(usedRag); const content = document.createElement("div"); content.className = "assistant-text"; if (role === "assistant") content.innerHTML = formatAssistantText(text); else content.textContent = text; bubble.appendChild(content); if (references.length) { const refs = document.createElement("details"); refs.className = "refs"; const summary = document.createElement("summary"); summary.textContent = `作品资料来源（${references.length}）`; refs.appendChild(summary); const body = document.createElement("div"); body.textContent = references.map(ref => ref.source_chapter ? `第${ref.source_chapter}章：${ref.reason || ref.memory_id}` : (ref.reason || ref.memory_id)).join("\n"); refs.appendChild(body); bubble.appendChild(refs); } chat.appendChild(bubble); if (stickToBottom) chat.scrollTop = chat.scrollHeight; if (persist) saveAssistantHistory(); }
+    function selectedEditorText() { if ($("chapterWorkspace").classList.contains("hidden")) return ""; const input = $("chapterText"); return input.value.slice(input.selectionStart, input.selectionEnd).trim().slice(0, 5000); }
+    function updateSelectionHint() { const text = selectedEditorText(); $("selectionHint").textContent = text ? `已引用 ${text.length} 字正文` : "未引用正文"; }
+    function sendAssistant(forceRag = false) { const question = $("assistantQuestion").value.trim(); if (!question) return; const bookId = $("bookId").value.trim(); if (forceRag && !bookId) { activity("请先选择需要查询的作品", true); return; } addAssistantMessage("user", question); $("assistantQuestion").value = ""; $("assistantMode").textContent = forceRag ? "正在查询作品资料" : "正在判断是否需要作品资料"; send({type:"consult",book_id:bookId,question,current_chapter:state.selectedChapterId,selected_text:selectedEditorText(),force_rag:forceRag}, "AI助手正在思考"); }
+    function restoreAssistantFrame() { try { const frame = JSON.parse(localStorage.getItem("assistant-frame") || "null"); if (!frame || innerWidth <= 820) return; Object.assign($("assistant").style, {left:`${Math.max(0,Math.min(frame.left,innerWidth-340))}px`,top:`${Math.max(48,Math.min(frame.top,innerHeight-340))}px`,right:"auto",bottom:"auto",width:`${frame.width}px`,height:`${frame.height}px`}); } catch {} }
+    function saveAssistantFrame() { if (state.assistantMaximized) return; const rect = $("assistant").getBoundingClientRect(); localStorage.setItem("assistant-frame", JSON.stringify({left:rect.left,top:rect.top,width:rect.width,height:rect.height})); }
+    function toggleAssistantMaximize() { const panel = $("assistant"); if (!state.assistantMaximized) saveAssistantFrame(); state.assistantMaximized = !state.assistantMaximized; panel.classList.toggle("maximized", state.assistantMaximized); $("assistantMaximize").textContent = state.assistantMaximized ? "▣" : "□"; $("assistantMaximize").title = state.assistantMaximized ? "还原" : "最大化"; if (!state.assistantMaximized) restoreAssistantFrame(); }
+    function enableAssistantDrag() { const panel = $("assistant"), handle = $("assistantHead"); let start = null; handle.addEventListener("pointerdown", event => { if (event.target.closest("button") || innerWidth <= 820 || state.assistantMaximized) return; const rect = panel.getBoundingClientRect(); start = {x:event.clientX,y:event.clientY,left:rect.left,top:rect.top}; panel.style.left = `${rect.left}px`; panel.style.top = `${rect.top}px`; panel.style.right = "auto"; panel.style.bottom = "auto"; event.preventDefault(); }); window.addEventListener("pointermove", event => { if (!start) return; panel.style.left = `${Math.max(0,Math.min(start.left + event.clientX - start.x, innerWidth - panel.offsetWidth))}px`; panel.style.top = `${Math.max(48,Math.min(start.top + event.clientY - start.y, innerHeight - panel.offsetHeight))}px`; }); window.addEventListener("pointerup", () => { if (!start) return; start = null; saveAssistantFrame(); }); window.addEventListener("pointercancel", () => { start = null; }); }
+    function enableAssistantResize() { const panel = $("assistant"), handle = $("assistantResize"); let start = null; handle.addEventListener("pointerdown", event => { if (innerWidth <= 820 || state.assistantMaximized) return; const rect = panel.getBoundingClientRect(); start = {x:event.clientX,y:event.clientY,width:rect.width,height:rect.height}; event.preventDefault(); }); window.addEventListener("pointermove", event => { if (!start) return; const rect = panel.getBoundingClientRect(); panel.style.width = `${Math.max(330,Math.min(start.width + event.clientX - start.x, innerWidth - rect.left - 10))}px`; panel.style.height = `${Math.max(340,Math.min(start.height + event.clientY - start.y, innerHeight - rect.top - 10))}px`; }); window.addEventListener("pointerup", () => { if (!start) return; start = null; saveAssistantFrame(); }); window.addEventListener("pointercancel", () => { start = null; }); }
+
+    document.querySelectorAll("[data-side]").forEach(button => button.onclick = () => showSide(button.dataset.side));
+    $("newBook").onclick = createBook;
+    $("entryForm").onsubmit = event => { event.preventDefault(); saveEntry(); };
+    $("cancelEntry").onclick = closeEntryDialog;
+    $("entryDialog").onclick = event => { if (event.target === $("entryDialog")) closeEntryDialog(); };
+    $("auditScopeMode").onchange = updateAuditScopeUi;
+    $("refreshLibrary").onclick = () => send({type:"library"}, "正在刷新作品目录");
+    $("refreshMemories").onclick = () => { const books = Object.keys(state.expandedMemoryBooks).filter(bookId => state.expandedMemoryBooks[bookId]); Promise.all(books.map(bookId => loadMemories(bookId, true))); };
+    $("refreshMaterials").onclick = () => { const books = Object.keys(state.expandedMaterialBooks).filter(bookId => state.expandedMaterialBooks[bookId]); Promise.all(books.map(bookId => loadMaterials(bookId, true))); };
+    $("checkMemories").onclick = startMemoryAudit; $("newMemory").onclick = newMemory; $("newMaterial").onclick = () => newMaterial("character");
+    $("memorySearch").oninput = renderMemories; $("materialSearch").oninput = renderMaterials;
+    $("taskCode").onchange = prepareSession; $("bookId").onchange = () => chooseBook($("bookId").value.trim());
+    $("generate").onclick = () => { const text = $("setting").value.trim(); const task = $("taskCode").value; if (!text && !["CT","PW"].includes(task)) { activity("请输入写作或素材要求", true); return; } if (["BD","CH"].includes(task)) { send({type:"generate_material",book_id:$("bookId").value.trim(),task_code:task,text,refine:$("refine").checked}, task === "BD" ? "Write_Agent正在生成世界观" : "Write_Agent正在生成人物"); return; } if (task === "PW") { const chapterText = $("chapterText").value; if (!state.selectedChapterId || !chapterText.trim()) { activity("请先选择并写入部分章节正文", true); return; } state.pendingGenerationBase = {title:$("chapterTitle").value, text:chapterText}; send({type:"submit_setting",session_id:state.sessionId,text,refine:$("refine").checked,chapter_title:$("chapterTitle").value,chapter_text:chapterText}, "正在补写当前章节"); return; } send({type:"submit_setting",session_id:state.sessionId,text,refine:$("refine").checked}, task === "RV" ? "正在修改章节" : "模型正在生成正文"); };
+    function submitEditor(action) { if (!state.selectedChapterId) return; send({type:action,book_id:state.currentBookId,chapter_id:state.selectedChapterId,title:$("chapterTitle").value,text:$("chapterText").value,session_id:state.sessionId}, action === "save_local" ? "正在保存本地草稿" : "正在保存并归档章节"); }
+    $("save").onclick = () => submitEditor("save_local"); $("archive").onclick = () => submitEditor("archive_editor");
+    $("extractMaterial").onclick = () => { if (!state.selectedChapterId) return; const title = $("chapterTitle").value.trim(), text = $("chapterText").value.trim(); if (!title || !text) { activity("章节标题和正文不能为空", true); return; } if (state.editorDirty && !confirm("当前正文存在未保存修改。继续后将先保存本地草稿，再提取素材。")) return; const saveDraft = state.editorDirty || state.editorIsDraft; send({type:"extract_materials",book_id:state.currentBookId,chapter_id:state.selectedChapterId,title,text,save_draft:saveDraft,session_id:state.sessionId}, saveDraft ? "正在保存草稿并提取素材" : "正在提取章节素材"); };
+    $("discard").onclick = () => { if (!state.original || !confirm("确定放弃当前修改吗？")) return; $("chapterTitle").value = state.original.title; $("chapterText").value = state.original.text; markDirty(); };
+    $("chapterTitle").addEventListener("input", markDirty); $("chapterText").addEventListener("input", markDirty); $("chapterText").addEventListener("select", updateSelectionHint);
+    $("backToChapter").onclick = () => showWorkspace("chapter");
+    $("memoryForm").onsubmit = async event => { event.preventDefault(); try { const bookId = state.selectedMemoryBookId || state.currentBookId; const path = state.selectedMemoryId ? `/api/books/${encodeURIComponent(bookId)}/memories/${encodeURIComponent(state.selectedMemoryId)}` : `/api/books/${encodeURIComponent(bookId)}/memories`; const data = await api(path,{method:state.selectedMemoryId?"PUT":"POST",body:JSON.stringify({value:memoryPayload()})}); state.selectedMemoryId = data.memory.memory_id; state.selectedMemoryBookId = bookId; activity("记忆已保存"); await loadMemories(bookId, true); const saved = (state.memoryCache[bookId] || []).find(item => item.memory_id === state.selectedMemoryId); if (saved) selectMemory(saved, bookId); } catch(error) { activity(error.message,true); } };
+    $("deleteMemory").onclick = async () => { if (!state.selectedMemoryId || !confirm("确定删除这条记忆吗？")) return; try { const bookId = state.selectedMemoryBookId || state.currentBookId; await api(`/api/books/${encodeURIComponent(bookId)}/memories/${encodeURIComponent(state.selectedMemoryId)}`,{method:"DELETE"}); activity("记忆已移入回收状态"); state.selectedMemoryId=""; await loadMemories(bookId, true); showWorkspace("chapter"); } catch(error) { activity(error.message,true); } };
+    $("materialCategory").onchange = () => renderMaterialFields();
+    $("materialForm").onsubmit = async event => { event.preventDefault(); try { const bookId=state.selectedMaterialBookId || state.currentBookId; const path=state.selectedMaterialId?`/api/books/${encodeURIComponent(bookId)}/materials/${encodeURIComponent(state.selectedMaterialId)}`:`/api/books/${encodeURIComponent(bookId)}/materials`; const data=await api(path,{method:state.selectedMaterialId?"PUT":"POST",body:JSON.stringify({value:materialPayload()})}); state.selectedMaterialId=data.material.material_id; state.selectedMaterialBookId=bookId; activity("素材已保存到本地"); await loadMaterials(bookId, true); const saved=(state.materialCache[bookId] || []).find(item=>item.material_id===state.selectedMaterialId); if(saved)selectMaterial(saved, bookId); } catch(error){activity(error.message,true);} };
+    $("deleteMaterial").onclick = async () => { if(!state.selectedMaterialId||!confirm("确定删除这条素材吗？"))return; try{const bookId=state.selectedMaterialBookId || state.currentBookId;await api(`/api/books/${encodeURIComponent(bookId)}/materials/${encodeURIComponent(state.selectedMaterialId)}`,{method:"DELETE"});activity("素材已删除");state.selectedMaterialId="";await loadMaterials(bookId, true);showWorkspace("chapter");}catch(error){activity(error.message,true);} };
+    $("syncMaterial").onclick = syncSelectedMaterial;
+    $("generateWorld").onclick = () => { $("taskCode").value="BD"; prepareSession(); $("setting").focus(); activity("已切换到世界观素材创作"); };
+    $("generateCharacter").onclick = () => { $("taskCode").value="CH"; prepareSession(); $("setting").focus(); activity("已切换到人物素材创作"); };
+    $("confirmPreview").onclick = async () => {
+      try {
+        if (["generation","review"].includes(state.previewMode)) {
+          const decisions = collectReviewDecisions();
+          if (!decisions.some(item => item.action !== "skip")) { activity("请至少保留一条素材，或点击取消", true); return; }
+          if (state.previewMode === "generation") { send({type:"confirm_material_generation",generation_id:state.generationId,decisions}, "正在保存素材并同步记忆"); return; }
+          const bookId = state.previewBookId || state.currentBookId;
+          await api(`/api/books/${encodeURIComponent(bookId)}/material-reviews/${encodeURIComponent(state.generationId)}/confirm`, {method:"POST",body:JSON.stringify({value:{decisions}})});
+          activity("已按你的选择更新素材库");
+          resetPreview();
+          await loadMaterials(bookId, true);
+          showWorkspace("material");
+          return;
+        }
+        if (state.previewMode === "audit") { if (!confirm("确定按预览结果精简记忆库吗？系统会先创建完整快照。")) return; send({type:"apply_memory_audit",book_id:state.previewBookId,session_id:state.auditSessionId}, "正在创建快照并精简记忆"); return; }
+        if (state.previewMode === "audit_applied") { if (!confirm("确定撤销本次记忆整理并恢复快照吗？")) return; send({type:"rollback_memory_audit",book_id:state.previewBookId,snapshot_id:state.auditSnapshotId}, "正在恢复整理前的记忆"); }
+      } catch (error) {
+        activity(error.message, true);
+      }
+    };
+    $("cancelPreview").onclick = () => { resetPreview(); showWorkspace("chapter"); };
+    $("assistantLauncher").onclick = () => { $("assistant").classList.remove("hidden"); restoreAssistantFrame(); renderAssistantHistory(); $("assistantQuestion").focus(); };
+    $("assistantClose").onclick = () => { saveAssistantFrame(); $("assistant").classList.add("hidden"); };
+    $("assistantMinimize").onclick = () => { saveAssistantFrame(); $("assistant").classList.add("hidden"); };
+    $("assistantMaximize").onclick = toggleAssistantMaximize;
+    $("assistantSend").onclick = () => sendAssistant(false); $("assistantQuestion").addEventListener("keydown", event => { if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();sendAssistant(false);} });
+    document.querySelectorAll("[data-question]").forEach(button => button.onclick = () => { $("assistantQuestion").value=button.dataset.question;sendAssistant(button.dataset.rag === "true"); });
+    window.addEventListener("keydown", event => { if (event.key === "Escape" && !$("entryDialog").classList.contains("hidden")) closeEntryDialog(); });
+    window.addEventListener("beforeunload", event => { if(state.editorDirty){event.preventDefault();event.returnValue="";} });
+
+    enableAssistantDrag(); enableAssistantResize(); loadMaterialSchemas().catch(() => {}); connect();
+  </script>
+</body>
+</html>
