@@ -28,18 +28,6 @@ This repository is the code-only public copy. It intentionally does not include 
 
 The `rag/` package contains the memory system: SQLite stores, retrieval, indexing, conflict records, audit scanning, patch application, snapshots, message protocol, and Qwen-based memory judgment.
 
-## What Is Not Included
-
-The following directories and files are deliberately excluded from the public copy:
-
-- `rag_data/`: private project writing data, chapters, memory stores, materials, and SQLite databases.
-- `rag_smoke_data/`: generated smoke-test data.
-- `models/`: local Hugging Face model snapshots and model weights.
-- `.env`: API keys, model endpoints, and local machine settings.
-- `__pycache__/`, `.pytest_cache/`, logs, socket files, and local database files.
-
-Do not upload those directories unless you have intentionally cleaned them.
-
 ## Requirements
 
 - Python 3.10 or newer. Python 3.11/3.12 is recommended.
@@ -224,21 +212,6 @@ Novel_Agentv2/
 ├── write_agent.py
 └── requirements.txt
 ```
-
-Only commit the source code and documentation. Keep `.env`, `models/`, and `rag_data/` local.
-
-## GitHub Upload Checklist
-
-Before pushing to GitHub, check that these are not included:
-
-- Real API keys or `.env` files.
-- Private writing content under `rag_data/`.
-- Smoke-test output under `rag_smoke_data/`.
-- Hugging Face model weights under `models/`.
-- SQLite databases such as `*.sqlite3` or `*.db`.
-- Python caches such as `__pycache__/`.
-
-The included `.gitignore` already excludes these paths.
 
 ## Notes
 
